@@ -4,8 +4,11 @@
   "description": "Live Race Tracking & PWA Mobile GPS Tracker for Ultra-Cycling Events",
   "main": "index.html",
   "scripts": {
-    "dev": "npx serve .",
-    "start": "npx serve ."
+    "dev": "serve -s -l 3000 .",
+    "start": "serve -s -l ${PORT:-3000} ."
+  },
+  "dependencies": {
+    "serve": "^14.2.4"
   },
   "keywords": [
     "racemap",
@@ -17,6 +20,5 @@
     "live-tracking"
   ],
   "author": "Antigravity",
-  "license": "MIT",
-  "type": "commonjs"
+  "license": "MIT"
 }
