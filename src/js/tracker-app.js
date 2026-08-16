@@ -1,6 +1,6 @@
 /* ==========================================================================
    RIDER MOBILE TRACKER PWA ENGINE (tracker.html)
-   Handles BIB/PIN Authentication, Geolocation Watcher, WakeLock, Audio Keep-Alive, & SOS Alerts
+   Fixes: First-point GPS initialization bug, jump filter reset, multi-rider BIB isolation
    ========================================================================== */
 
 import { calculateDistance } from './mock-data.js';
@@ -15,10 +15,10 @@ class RiderApp {
     this.wakeLock = null;
     this.audioKeepAlive = null;
 
-    this.lastPosition = null;
+    this.lastPosition = null; // MUST BE NULL AT START so first location is accepted cleanly
     this.totalDistanceKm = 0;
     this.currentSpeedKmh = 0;
-    this.currentElevation = 15;
+    this.currentElevation = 0;
     this.batteryLevel = 100;
     this.isCharging = false;
 
@@ -28,9 +28,7 @@ class RiderApp {
     this.initBattery();
   }
 
-  // Create Silent Base64 Audio Loop to prevent OS from killing JS thread when screen is locked/browser closed
   initAudioKeepAlive() {
-    // 0.1s Silent WAV audio file base64 data URI
     const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
     this.audioKeepAlive = new Audio(silentWav);
     this.audioKeepAlive.loop = true;
@@ -38,9 +36,7 @@ class RiderApp {
 
   startAudioKeepAlive() {
     if (this.audioKeepAlive) {
-      this.audioKeepAlive.play().catch(e => {
-        console.log('Audio Keep-Alive autoplay notice:', e);
-      });
+      this.audioKeepAlive.play().catch(e => {});
     }
   }
 
@@ -59,7 +55,6 @@ class RiderApp {
         this.authPin = session.pin;
         this.showDashboard();
 
-        // Auto-resume tracking if active flag was set
         if (session.isTrackingActive) {
           this.startTracking();
         }
@@ -190,10 +185,10 @@ class RiderApp {
     if (this.isTracking || !this.authRider) return;
 
     this.isTracking = true;
+    this.lastPosition = null; // RESET to null so first physical point is accepted 100%!
     this.requestWakeLock();
     this.startAudioKeepAlive();
 
-    // Save tracking session flag
     localStorage.setItem('racemap_rider_session', JSON.stringify({
       rider: this.authRider,
       pin: this.authPin,
@@ -203,7 +198,7 @@ class RiderApp {
     const geoOptions = {
       enableHighAccuracy: true,
       maximumAge: 1000,
-      timeout: 10000
+      timeout: 15000
     };
 
     if ('geolocation' in navigator) {
@@ -228,6 +223,7 @@ class RiderApp {
     }
 
     this.isTracking = false;
+    this.lastPosition = null;
     this.releaseWakeLock();
     this.stopAudioKeepAlive();
 
@@ -244,10 +240,16 @@ class RiderApp {
     const { latitude, longitude, altitude, speed, accuracy } = position.coords;
     const timestamp = position.timestamp;
 
-    if (accuracy > 50) return;
+    // Ignore low accuracy GPS frames (> 60m)
+    if (accuracy > 60) {
+      console.warn(`GPS accuracy too low (${accuracy}m). Skipping.`);
+      return;
+    }
 
     let distInc = 0;
+
     if (this.lastPosition) {
+      // Calculate distance from previous point
       distInc = calculateDistance(
         this.lastPosition.lat,
         this.lastPosition.lng,
@@ -255,26 +257,35 @@ class RiderApp {
         longitude
       );
 
-      if (distInc < 0.005) distInc = 0;
-      else if (distInc > 5.0) return;
+      if (distInc < 0.003) {
+        // Less than 3 meters movement -> stationary
+        distInc = 0;
+      } else if (distInc > 10.0) {
+        // If GPS jumped > 10km in 1 frame (e.g. tunnel/reboot), reset reference without discarding future points!
+        console.warn('GPS jump detected (>10km). Resetting reference position.');
+        distInc = 0;
+      }
     }
 
     this.totalDistanceKm += distInc;
 
+    // Speed calculation
     if (speed !== null && speed >= 0) {
       this.currentSpeedKmh = Number((speed * 3.6).toFixed(1));
     } else if (this.lastPosition && distInc > 0) {
       const timeDiffHours = (timestamp - this.lastPosition.timestamp) / (1000 * 3600);
-      this.currentSpeedKmh = Number((distInc / timeDiffHours).toFixed(1));
+      this.currentSpeedKmh = timeDiffHours > 0 ? Number((distInc / timeDiffHours).toFixed(1)) : 0;
     } else {
       this.currentSpeedKmh = 0;
     }
 
-    this.currentElevation = altitude ? Math.round(altitude) : 15;
+    this.currentElevation = altitude ? Math.round(altitude) : (this.currentElevation || 15);
+    
+    // Set current point as reference for next frame
     this.lastPosition = { lat: latitude, lng: longitude, timestamp };
 
     const payload = {
-      bib: this.authRider.bib,
+      bib: String(this.authRider.bib).trim(),
       pin: this.authPin,
       name: this.authRider.name,
       category: this.authRider.category,
@@ -284,17 +295,24 @@ class RiderApp {
       speed: this.currentSpeedKmh,
       distanceKm: Number(this.totalDistanceKm.toFixed(2)),
       battery: this.batteryLevel,
-      status: this.currentSpeedKmh > 1.0 ? 'moving' : 'stopped',
+      status: this.currentSpeedKmh > 0.8 ? 'moving' : 'stopped',
       lastUpdate: new Date().toLocaleTimeString()
     };
 
+    // Send location to server
     try {
-      await fetch('/api/location', {
+      const res = await fetch('/api/location', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-    } catch (e) {}
+      const data = await res.json();
+      if (!data.success) {
+        console.warn('Location sync warning:', data.error);
+      }
+    } catch (e) {
+      console.warn('Failed to sync location to backend:', e);
+    }
 
     this.updateUI();
   }
@@ -310,7 +328,7 @@ class RiderApp {
     const lng = this.lastPosition ? this.lastPosition.lng : 106.8272;
 
     const sosPayload = {
-      bib: this.authRider.bib,
+      bib: String(this.authRider.bib).trim(),
       name: this.authRider.name,
       lat,
       lng,

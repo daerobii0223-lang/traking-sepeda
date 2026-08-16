@@ -93,7 +93,6 @@ app.get('/api/events', (req, res) => {
    AUTHENTICATION ENDPOINTS
    ========================================================================== */
 
-// Admin Login (Username: admin, Password: admin)
 app.post('/api/auth/admin-login', (req, res) => {
   const { username, password } = req.body;
   if (username === 'admin' && password === 'admin') {
@@ -103,7 +102,6 @@ app.post('/api/auth/admin-login', (req, res) => {
   }
 });
 
-// Rider Login with BIB & PIN
 app.post('/api/auth/login', (req, res) => {
   const { bib, pin } = req.body;
   if (!bib || !pin) {
@@ -126,17 +124,20 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 /* ==========================================================================
-   RIDER GPS TRACKING ENDPOINTS
+   RIDER GPS TRACKING ENDPOINTS (STRICT BINDING PER BIB)
    ========================================================================== */
 
 app.post('/api/location', (req, res) => {
   const data = req.body;
   const { bib, pin, lat, lng, speed, distanceKm, battery, status, lastUpdate } = data;
 
-  if (!bib) return res.status(400).json({ error: 'Missing BIB' });
+  if (!bib || String(bib).trim() === '' || String(bib) === 'undefined') {
+    return res.status(400).json({ error: 'Missing or Invalid BIB Number' });
+  }
 
   const cleanBib = String(bib).trim();
 
+  // Verify PIN if credential exists for security
   if (db.credentials[cleanBib] && pin && db.credentials[cleanBib] !== String(pin).trim()) {
     return res.status(401).json({ error: 'Unauthorized PIN' });
   }
@@ -159,21 +160,27 @@ app.post('/api/location', (req, res) => {
     };
     db.riders[cleanBib] = rider;
   } else {
-    rider.lat = lat;
-    rider.lng = lng;
-    rider.speed = speed;
-    rider.distanceKm = distanceKm;
-    rider.battery = battery;
-    rider.status = status;
+    rider.lat = Number(lat);
+    rider.lng = Number(lng);
+    rider.speed = Number(speed || 0);
+    rider.distanceKm = Number(distanceKm || 0);
+    rider.battery = Number(battery || 100);
+    rider.status = status || 'moving';
     rider.lastUpdate = lastUpdate || new Date().toLocaleTimeString();
   }
 
   if (!rider.trail) rider.trail = [];
-  rider.trail.push({ lat, lng, timestamp: Date.now() });
-  if (rider.trail.length > 1000) rider.trail.shift();
+  
+  // Deduplicate consecutive identical coordinates
+  const lastTrail = rider.trail[rider.trail.length - 1];
+  if (!lastTrail || Math.abs(lastTrail.lat - lat) > 0.0001 || Math.abs(lastTrail.lng - lng) > 0.0001) {
+    rider.trail.push({ lat: Number(lat), lng: Number(lng), timestamp: Date.now() });
+    if (rider.trail.length > 1000) rider.trail.shift();
+  }
 
   saveDB();
 
+  // Broadcast location update of THIS specific rider to all connected public spectators
   broadcastToPublic('LOCATION_UPDATE', rider);
 
   res.json({ success: true });
@@ -186,7 +193,7 @@ app.post('/api/sos', (req, res) => {
 });
 
 /* ==========================================================================
-   ADMIN RACE CONTROL ENDPOINTS
+   ADMIN ENDPOINTS
    ========================================================================== */
 
 app.post('/api/admin/riders', (req, res) => {
