@@ -2,12 +2,14 @@
   "name": "web-racemap-ultra",
   "version": "1.0.0",
   "description": "Live Race Tracking & PWA Mobile GPS Tracker for Ultra-Cycling Events",
-  "main": "index.html",
+  "main": "server.js",
   "scripts": {
-    "dev": "serve -s -l 3000 .",
-    "start": "serve -s -l ${PORT:-3000} ."
+    "dev": "node server.js",
+    "start": "node server.js"
   },
   "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
     "serve": "^14.2.4"
   },
   "keywords": [

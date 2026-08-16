@@ -1,6 +1,6 @@
 /* ==========================================================================
    MAIN APP ROUTER & REAL-TIME STATE ENGINE
-   Connects Spectator View, Rider Tracker, Admin Control, & Broadcast Sync
+   Connects Spectator View, Rider Tracker, Admin Control, Server SSE, & Mobile Drawers
    ========================================================================== */
 
 import { generateFullRoutePoints, INITIAL_RIDERS } from './mock-data.js';
@@ -11,7 +11,7 @@ import { RaceAdminEngine } from './admin.js';
 class RacemapApp {
   constructor() {
     this.routePoints = generateFullRoutePoints();
-    this.ridersMap = new Map(); // bib -> rider object
+    this.ridersMap = new Map();
     this.currentCategoryFilter = 'ALL';
     this.searchQuery = '';
     
@@ -27,6 +27,7 @@ class RacemapApp {
 
     this.initPWA();
     this.initBroadcastListeners();
+    this.initSSEStream();
   }
 
   loadSampleRiders() {
@@ -34,7 +35,7 @@ class RacemapApp {
     INITIAL_RIDERS.forEach(r => this.ridersMap.set(r.bib, { ...r }));
   }
 
-  clearAllRiders() {
+  async clearAllRiders() {
     this.ridersMap.clear();
     if (this.mapEngine) {
       this.mapEngine.riderMarkers.forEach(m => this.mapEngine.map.removeLayer(m));
@@ -44,9 +45,12 @@ class RacemapApp {
     }
     this.renderLeaderboard();
     this.updateSpectatorStats();
+
+    try {
+      await fetch('/api/clear', { method: 'POST' });
+    } catch (e) {}
   }
 
-  // Initialize PWA Service Worker
   initPWA() {
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -56,7 +60,6 @@ class RacemapApp {
       });
     }
 
-    // PWA Install Prompt Listener
     let deferredPrompt;
     window.addEventListener('beforeinstallprompt', (e) => {
       e.preventDefault();
@@ -83,30 +86,58 @@ class RacemapApp {
     });
   }
 
-  // Start Application
+  // Connect to Public Backend Server-Sent Events (SSE) stream for internet spectators
+  initSSEStream() {
+    if ('EventSource' in window) {
+      const evtSource = new EventSource('/api/events');
+      
+      evtSource.addEventListener('INITIAL_RIDERS', (e) => {
+        try {
+          const list = JSON.parse(e.data);
+          if (list && list.length > 0) {
+            list.forEach(r => this.handleLiveLocationUpdate(r));
+          }
+        } catch (err) {}
+      });
+
+      evtSource.addEventListener('LOCATION_UPDATE', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          this.handleLiveLocationUpdate(data);
+        } catch (err) {}
+      });
+
+      evtSource.addEventListener('SOS_ALERT', (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          this.handleSOSAlert(data);
+        } catch (err) {}
+      });
+
+      evtSource.addEventListener('CLEAR_RIDERS', () => {
+        this.clearAllRiders();
+      });
+    }
+  }
+
   start() {
-    // 1. Initialize Map
     this.mapEngine = new RacemapEngine('leaflet-map', 'elevation-chart');
     this.mapEngine.renderFixedRoute(this.routePoints);
     
-    // Render initial riders on map
     this.ridersMap.forEach(r => this.mapEngine.updateRiderPosition(r));
 
-    // 2. Initialize Tracker & Admin
     this.trackerEngine = new RiderTrackerEngine();
     this.adminEngine = new RaceAdminEngine(this);
 
-    // 3. Setup Navigation & Listeners
     this.setupTabNavigation();
     this.setupModeToggle();
     this.setupLeaderboard();
     this.setupAdminUI();
+    this.setupMobileDrawers();
 
-    // 4. Initial Leaderboard Render
     this.renderLeaderboard();
   }
 
-  // Real-time Broadcast Channel & LocalStorage Listeners
   initBroadcastListeners() {
     const channel = new BroadcastChannel('racemap_live_stream');
 
@@ -119,7 +150,6 @@ class RacemapApp {
       }
     };
 
-    // Also check storage events (fallback across tabs)
     window.addEventListener('storage', (e) => {
       if (e.key === 'racemap_last_rider_update' && e.newValue) {
         try {
@@ -135,7 +165,6 @@ class RacemapApp {
     });
   }
 
-  // Handle incoming live location update from PWA Tracker or Simulator
   handleLiveLocationUpdate(data) {
     const { bib, name, category, lat, lng, speed, distanceKm, battery, status, lastUpdate } = data;
 
@@ -167,27 +196,22 @@ class RacemapApp {
       rider.lastUpdate = lastUpdate;
     }
 
-    // Append to trail
     if (!rider.trail) rider.trail = [];
     rider.trail.push({ lat, lng });
     if (rider.trail.length > 500) rider.trail.shift();
 
-    // Update map marker
     if (this.mapEngine) {
       this.mapEngine.updateRiderPosition(rider);
     }
 
-    // Update Leaderboard & Stats
     this.renderLeaderboard();
     this.updateSpectatorStats();
   }
 
-  // Handle Emergency SOS Alert
   handleSOSAlert(data) {
     const { bib, name, lat, lng } = data;
     this.showToast(`🚨 SOS EMERGENSI! BIB #${bib} (${name}) di [${lat.toFixed(4)}, ${lng.toFixed(4)}]`, 'sos');
     
-    // Pan map to SOS location
     if (this.mapEngine) {
       this.mapEngine.map.setView([lat, lng], 14, { animate: true });
     }
@@ -207,7 +231,6 @@ class RacemapApp {
     }, 6000);
   }
 
-  // Tab Switcher
   setupTabNavigation() {
     const tabs = document.querySelectorAll('.tab-btn');
     const views = document.querySelectorAll('.view-container');
@@ -223,7 +246,6 @@ class RacemapApp {
         const activeView = document.getElementById(targetViewId);
         if (activeView) activeView.classList.add('active');
 
-        // Resize Leaflet Map when Spectator View opens
         if (targetViewId === 'view-spectator' && this.mapEngine) {
           setTimeout(() => this.mapEngine.map.invalidateSize(), 200);
         }
@@ -231,7 +253,6 @@ class RacemapApp {
     });
   }
 
-  // Mode Switcher: Fixed Route vs Free Tracking Mode
   setupModeToggle() {
     const toggleInput = document.getElementById('toggle-mode-checkbox');
     const modeLabel = document.getElementById('mode-indicator-text');
@@ -242,8 +263,8 @@ class RacemapApp {
         
         if (modeLabel) {
           modeLabel.innerText = this.isFreeTrackingMode 
-            ? 'FREE TRACKING (Tanpa Jalur)' 
-            : 'FIXED GPX ROUTE';
+            ? 'FREE TRACKING' 
+            : 'FIXED GPX';
         }
 
         if (this.mapEngine) {
@@ -254,7 +275,6 @@ class RacemapApp {
       });
     }
 
-    // Tile Layer Switcher Buttons
     const tileBtns = document.querySelectorAll('.tile-btn');
     tileBtns.forEach(btn => {
       btn.addEventListener('click', () => {
@@ -266,7 +286,6 @@ class RacemapApp {
     });
   }
 
-  // Leaderboard Search, Filters, & Card Interactions
   setupLeaderboard() {
     const searchInput = document.getElementById('search-rider');
     if (searchInput) {
@@ -285,6 +304,26 @@ class RacemapApp {
         this.renderLeaderboard();
       });
     });
+  }
+
+  // Mobile Drawers Triggers (Slide-up Leaderboard & Elevation on Mobile Phones)
+  setupMobileDrawers() {
+    const btnMobileLeaderboard = document.getElementById('btn-mobile-leaderboard');
+    const btnMobileElevation = document.getElementById('btn-mobile-elevation');
+    const drawerLeaderboard = document.getElementById('leaderboard-drawer');
+    const drawerElevation = document.getElementById('elevation-profile-bar');
+
+    if (btnMobileLeaderboard && drawerLeaderboard) {
+      btnMobileLeaderboard.addEventListener('click', () => {
+        drawerLeaderboard.classList.toggle('mobile-open');
+      });
+    }
+
+    if (btnMobileElevation && drawerElevation) {
+      btnMobileElevation.addEventListener('click', () => {
+        drawerElevation.classList.toggle('mobile-open');
+      });
+    }
   }
 
   renderLeaderboard() {
@@ -308,7 +347,7 @@ class RacemapApp {
     listContainer.innerHTML = '';
 
     if (riders.length === 0) {
-      listContainer.innerHTML = `<div style="text-align:center; padding:2rem; color:#64748b; font-size:0.8rem;">Belum ada peserta terdaftar</div>`;
+      listContainer.innerHTML = `<div style="text-align:center; padding:1.5rem; color:#64748b; font-size:0.75rem;">Belum ada peserta terdaftar</div>`;
       return;
     }
 
@@ -327,9 +366,9 @@ class RacemapApp {
             <span class="rider-bib">BIB ${rider.bib}</span>
             <span class="rider-name">${rider.name}</span>
           </div>
-          <span style="font-size:0.75rem; font-weight:800; color:var(--primary); font-family:monospace;">${rankBadge}</span>
+          <span style="font-size:0.7rem; font-weight:800; color:var(--primary); font-family:monospace;">${rankBadge}</span>
         </div>
-        <div style="display:flex; justify-content:space-between; font-size:0.7rem; color:var(--text-muted);">
+        <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted);">
           <span>${rider.category}</span>
           <span><span class="rider-status-dot ${rider.status}"></span> ${rider.status.toUpperCase()}</span>
         </div>
@@ -348,7 +387,7 @@ class RacemapApp {
           </div>
         </div>
         <div style="display:flex; justify-content:flex-end;">
-          <button class="btn-follow" data-bib="${rider.bib}">📍 Follow Camera</button>
+          <button class="btn-follow" data-bib="${rider.bib}">📍 Follow</button>
         </div>
       `;
 
@@ -356,6 +395,10 @@ class RacemapApp {
       btnFollow.addEventListener('click', (e) => {
         e.stopPropagation();
         if (this.mapEngine) this.mapEngine.followRider(rider.bib);
+        
+        // On mobile, close drawer after selecting rider
+        const drawer = document.getElementById('leaderboard-drawer');
+        if (drawer) drawer.classList.remove('mobile-open');
       });
 
       card.addEventListener('click', () => {
@@ -393,7 +436,6 @@ class RacemapApp {
     if (speedEl) speedEl.innerText = `${avgSpeed} km/h`;
   }
 
-  // Setup Rider PWA Tracker UI Controls
   setupTrackerUI() {
     const btnToggle = document.getElementById('btn-toggle-tracker');
     const btnSos = document.getElementById('btn-pwa-sos');
@@ -414,14 +456,13 @@ class RacemapApp {
 
     if (btnSos) {
       btnSos.addEventListener('click', () => {
-        if (confirm("🚨 Send Emergency SOS Alert to Race Control?")) {
+        if (confirm("🚨 Send Emergency SOS Alert to Race Control & Public Server?")) {
           this.trackerEngine.triggerSOS();
         }
       });
     }
   }
 
-  // Setup Admin Control UI Controls
   setupAdminUI() {
     this.setupTrackerUI();
 
@@ -432,7 +473,7 @@ class RacemapApp {
 
     if (btnClear) {
       btnClear.addEventListener('click', () => {
-        if (confirm("Bersihkan semua data rider dummy?")) {
+        if (confirm("Bersihkan semua data rider?")) {
           this.clearAllRiders();
           this.showToast("🧹 Data rider berhasil dibersihkan.");
         }

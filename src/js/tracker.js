@@ -1,6 +1,6 @@
 /* ==========================================================================
    RIDER MOBILE GPS TRACKER PWA ENGINE
-   Handles Geolocation Watcher, WakeLock, Battery API, Offline Buffer, & SOS Alerts
+   Handles Geolocation Watcher, WakeLock, Battery API, Offline Buffer, & Backend Sync
    ========================================================================== */
 
 import { calculateDistance } from './mock-data.js';
@@ -11,7 +11,7 @@ export class RiderTrackerEngine {
     this.watchId = null;
     this.wakeLock = null;
     this.riderProfile = {
-      bib: "999",
+      bib: "777",
       name: "Saya (Rider HP)",
       category: "Solo Unsupported"
     };
@@ -25,25 +25,20 @@ export class RiderTrackerEngine {
     this.isCharging = false;
     this.offlineQueue = [];
     
-    // Broadcast channel for real-time local sync across tabs/windows
     this.broadcastChannel = new BroadcastChannel('racemap_live_stream');
     
     this.initBatteryListener();
     this.loadOfflineQueue();
   }
 
-  // Initialize Battery Status API
   async initBatteryListener() {
     if ('getBattery' in navigator) {
       try {
         const battery = await navigator.getBattery();
         this.updateBatteryInfo(battery);
-        
         battery.addEventListener('levelchange', () => this.updateBatteryInfo(battery));
         battery.addEventListener('chargingchange', () => this.updateBatteryInfo(battery));
-      } catch (err) {
-        console.warn('Battery API not supported or blocked:', err);
-      }
+      } catch (err) {}
     }
   }
 
@@ -53,15 +48,11 @@ export class RiderTrackerEngine {
     this.updateUI();
   }
 
-  // Request Screen Wake Lock (Keep screen on for cockpit mount)
   async requestWakeLock() {
     if ('wakeLock' in navigator) {
       try {
         this.wakeLock = await navigator.wakeLock.request('screen');
-        console.log('Screen WakeLock active');
-      } catch (err) {
-        console.warn('WakeLock request failed:', err);
-      }
+      } catch (err) {}
     }
   }
 
@@ -72,8 +63,7 @@ export class RiderTrackerEngine {
     }
   }
 
-  // Start GPS Geolocation Tracking
-  startTracking(riderBib = "999", riderName = "HP Tracker") {
+  startTracking(riderBib = "777", riderName = "HP Tracker") {
     if (this.isTracking) return;
     
     this.riderProfile.bib = riderBib;
@@ -100,7 +90,6 @@ export class RiderTrackerEngine {
     this.updateUI();
   }
 
-  // Stop Tracking
   stopTracking() {
     if (!this.isTracking) return;
     
@@ -114,16 +103,11 @@ export class RiderTrackerEngine {
     this.updateUI();
   }
 
-  // Handle incoming GPS Coordinate
   handleLocationSuccess(position) {
     const { latitude, longitude, altitude, speed, heading, accuracy } = position.coords;
     const timestamp = position.timestamp;
 
-    // Filter noise: Ignore low accuracy GPS drift > 50m
-    if (accuracy > 50) {
-      console.warn(`GPS Accuracy too low (${accuracy}m). Skipping frame.`);
-      return;
-    }
+    if (accuracy > 50) return;
 
     let distInc = 0;
     if (this.lastPosition) {
@@ -134,18 +118,15 @@ export class RiderTrackerEngine {
         longitude
       );
 
-      // Distance Threshold Filter: Ignore sudden impossible jumps (> 100km/h cycling speed jump)
-      if (distInc < 0.005) { // less than 5 meters movement
+      if (distInc < 0.005) {
         distInc = 0;
-      } else if (distInc > 5.0) { // jump > 5km in 1 frame
-        console.warn('GPS teleportation jump detected. Skipping.');
+      } else if (distInc > 5.0) {
         return;
       }
     }
 
     this.totalDistanceKm += distInc;
     
-    // Calculate speed in km/h (speed from coords is m/s)
     if (speed !== null && speed >= 0) {
       this.currentSpeedKmh = Number((speed * 3.6).toFixed(1));
     } else if (this.lastPosition && distInc > 0) {
@@ -155,7 +136,7 @@ export class RiderTrackerEngine {
       this.currentSpeedKmh = 0;
     }
 
-    this.currentElevation = altitude ? Math.round(altitude) : 50;
+    this.currentElevation = altitude ? Math.round(altitude) : 15;
     this.heading = heading || 0;
 
     const payload = {
@@ -177,29 +158,37 @@ export class RiderTrackerEngine {
 
     this.lastPosition = { lat: latitude, lng: longitude, timestamp };
 
-    // Send location to Spectator & Admin via BroadcastChannel & LocalStorage
     this.broadcastUpdate(payload);
     this.updateUI(payload);
   }
 
   handleLocationError(error) {
-    console.error('GPS Error:', error.message);
     const errEl = document.getElementById('pwa-gps-status');
     if (errEl) errEl.innerText = `GPS Error: ${error.message}`;
   }
 
-  // Broadcast update to other tabs/windows
-  broadcastUpdate(payload) {
+  async broadcastUpdate(payload) {
+    // 1. Broadcast locally across tabs
+    this.broadcastChannel.postMessage(payload);
+    localStorage.setItem('racemap_last_rider_update', JSON.stringify(payload));
+
+    // 2. Post to Public Backend Server DB
     if (navigator.onLine) {
-      this.broadcastChannel.postMessage(payload);
-      localStorage.setItem('racemap_last_rider_update', JSON.stringify(payload));
-      
-      // If offline queue had items, flush them
-      if (this.offlineQueue.length > 0) {
-        this.flushOfflineQueue();
+      try {
+        await fetch('/api/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        if (this.offlineQueue.length > 0) {
+          this.flushOfflineQueue();
+        }
+      } catch (err) {
+        this.offlineQueue.push(payload);
+        this.saveOfflineQueue();
       }
     } else {
-      // Save to offline buffer
       this.offlineQueue.push(payload);
       this.saveOfflineQueue();
     }
@@ -220,17 +209,23 @@ export class RiderTrackerEngine {
     }
   }
 
-  flushOfflineQueue() {
-    console.log(`Flushing ${this.offlineQueue.length} offline GPS coordinates...`);
-    this.offlineQueue.forEach((item) => {
-      this.broadcastChannel.postMessage(item);
-    });
+  async flushOfflineQueue() {
+    const queue = [...this.offlineQueue];
     this.offlineQueue = [];
     localStorage.removeItem('racemap_offline_queue');
+
+    for (const item of queue) {
+      try {
+        await fetch('/api/location', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(item)
+        });
+      } catch (e) {}
+    }
   }
 
-  // Trigger Distress SOS Alert
-  triggerSOS() {
+  async triggerSOS() {
     const lat = this.lastPosition ? this.lastPosition.lat : -6.1754;
     const lng = this.lastPosition ? this.lastPosition.lng : 106.8272;
 
@@ -245,12 +240,18 @@ export class RiderTrackerEngine {
     };
 
     this.broadcastChannel.postMessage(sosPayload);
-    localStorage.setItem('racemap_sos_alert', JSON.stringify(sosPayload));
     
-    alert(`🚨 EMERGENCY SOS DISPATCHED!\nKoordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}\nBaterai: ${this.batteryLevel}%\nSinyal SOS telah dikirimkan ke Race Control!`);
+    try {
+      await fetch('/api/sos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(sosPayload)
+      });
+    } catch (e) {}
+
+    alert(`🚨 SOS DISPATCHED!\nKoordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}\nSinyal telah dikirimkan ke server publik & Race Control!`);
   }
 
-  // Update UI Elements
   updateUI(payload = null) {
     const btnTracker = document.getElementById('btn-toggle-tracker');
     const statusBadge = document.getElementById('pwa-status-badge');

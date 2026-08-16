@@ -30,13 +30,13 @@
       <div class="brand-icon">⚡</div>
       <div>
         <span class="brand-title">RACEMAP ULTRA</span>
-        <span class="mode-badge">BENTANG JAWA STYLE</span>
+        <span class="mode-badge">BENTANG JAWA</span>
       </div>
     </div>
 
     <!-- Mode Switcher Pill (Fixed GPX Route vs Free Tracking) -->
     <div class="route-mode-pill">
-      <label for="toggle-mode-checkbox" id="mode-indicator-text">FIXED GPX ROUTE</label>
+      <label for="toggle-mode-checkbox" id="mode-indicator-text">FIXED GPX</label>
       <label class="switch-toggle">
         <input type="checkbox" id="toggle-mode-checkbox">
         <span class="switch-slider"></span>
@@ -47,15 +47,15 @@
     <nav class="nav-tabs">
       <button class="tab-btn active" data-view="view-spectator">
         <span>🗺️</span>
-        <span class="tab-text">Live Spectator Map</span>
+        <span class="tab-text">Map</span>
       </button>
       <button class="tab-btn" data-view="view-tracker">
         <span>📱</span>
-        <span class="tab-text">Rider Tracker (PWA)</span>
+        <span class="tab-text">Tracker</span>
       </button>
       <button class="tab-btn" data-view="view-admin">
         <span>⚙️</span>
-        <span class="tab-text">Race Control</span>
+        <span class="tab-text">Control</span>
       </button>
     </nav>
   </header>
@@ -68,40 +68,49 @@
 
       <!-- Tile Layer Switcher Controls -->
       <div class="map-tile-controls">
-        <button class="tile-btn active" data-tile="dark">Dark Mode</button>
+        <button class="tile-btn active" data-tile="dark">Dark</button>
         <button class="tile-btn" data-tile="satellite">Satellite</button>
         <button class="tile-btn" data-tile="topo">Terrain</button>
-        <button class="tile-btn" data-tile="osm">Street</button>
       </div>
 
       <!-- Spectator Stats Bar Overlay -->
-      <div class="spectator-stats-overlay glass-panel">
+      <div class="spectator-stats-overlay">
         <div class="stat-box">
-          <span class="label">Aktif Melaju</span>
+          <span class="label">Aktif</span>
           <span class="value" id="stat-active-riders">4 / 5</span>
         </div>
-        <div class="stat-box" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 1rem;">
-          <span class="label">Jarak Terdepan</span>
-          <span class="value" id="stat-leader-km">580.2 KM</span>
+        <div class="stat-box" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 0.6rem;">
+          <span class="label">Lead KM</span>
+          <span class="value" id="stat-leader-km">580.2</span>
         </div>
-        <div class="stat-box" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 1rem;">
-          <span class="label">Rata-rata Speed</span>
-          <span class="value" id="stat-avg-speed">26.3 km/h</span>
+        <div class="stat-box" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 0.6rem;">
+          <span class="label">Avg Spd</span>
+          <span class="value" id="stat-avg-speed">26.3</span>
         </div>
       </div>
 
+      <!-- Mobile Floating Drawer Triggers -->
+      <div class="mobile-map-triggers">
+        <button id="btn-mobile-leaderboard" class="btn-mobile-trigger">
+          🏆 Leaderboard
+        </button>
+        <button id="btn-mobile-elevation" class="btn-mobile-trigger">
+          ⛰️ Elevation
+        </button>
+      </div>
+
       <!-- Leaderboard Sidebar / Drawer -->
-      <aside class="leaderboard-drawer">
+      <aside class="leaderboard-drawer" id="leaderboard-drawer">
         <div class="drawer-header">
           <div class="drawer-title">
             <span>🏆 LEADERBOARD RACE</span>
-            <span style="font-size: 0.7rem; color: var(--primary); font-weight:700;">LIVE STREAM</span>
+            <button id="btn-close-drawer" style="display:none; background:none; border:none; color:var(--text-muted); font-size:1rem; cursor:pointer;">✖</button>
           </div>
 
           <!-- Search Input -->
           <div class="search-box">
             <span class="search-icon">🔍</span>
-            <input type="text" id="search-rider" placeholder="Cari Peserta atau BIB #...">
+            <input type="text" id="search-rider" placeholder="Cari Peserta / BIB #...">
           </div>
 
           <!-- Category Chips -->
@@ -121,10 +130,10 @@
     </div>
 
     <!-- Bottom Elevation Profile Bar -->
-    <section class="elevation-profile-bar">
+    <section class="elevation-profile-bar" id="elevation-profile-bar">
       <div class="elevation-header">
-        <span class="elevation-title">⛰️ Profil Ketinggian Rute (Elevation Profile)</span>
-        <span style="font-size:0.75rem; color:var(--primary); font-weight:600;">Monas Jakarta ➔ Ketapang Banyuwangi (1000 KM)</span>
+        <span class="elevation-title">⛰️ Profil Ketinggian Rute</span>
+        <button id="btn-close-elevation" style="display:none; background:none; border:none; color:var(--text-muted); font-size:0.8rem; cursor:pointer;">✖ Tutup</button>
       </div>
       <div class="chart-container">
         <canvas id="elevation-chart"></canvas>
@@ -140,7 +149,7 @@
       <div class="pwa-header">
         <div>
           <h2 class="pwa-title">RIDER MOBILE TRACKER</h2>
-          <span style="font-size:0.7rem; color:var(--text-muted);">GPS Web App Tracker</span>
+          <span style="font-size:0.65rem; color:var(--text-muted);">GPS Web App Tracker</span>
         </div>
         <div id="pwa-status-badge" class="pwa-status-badge off">
           <span class="pulse-dot"></span> OFF / PAUSED
@@ -150,15 +159,15 @@
       <!-- Install PWA Card Banner -->
       <div class="install-pwa-card" id="pwa-install-card" style="display:none;">
         <div class="install-text">
-          📲 Install Aplikasi ke HP Anda (Add to Home Screen)
+          📲 Install Aplikasi ke HP Anda
         </div>
         <button class="btn-install" id="btn-pwa-install">INSTALL</button>
       </div>
 
       <!-- Rider Profile Form -->
-      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:0.75rem;">
+      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:0.5rem;">
         <div class="form-group">
-          <label>Nomor BIB</label>
+          <label>BIB #</label>
           <input type="text" id="pwa-rider-bib" class="form-control" value="777">
         </div>
         <div class="form-group">
@@ -173,7 +182,7 @@
           <span>START</span>
           <small>TRACKING</small>
         </button>
-        <span id="pwa-gps-status" style="font-size:0.75rem; color:var(--text-muted);">Status: Ready. Tekan START untuk mengaktifkan GPS HP.</span>
+        <span id="pwa-gps-status" style="font-size:0.7rem; color:var(--text-muted); text-align:center;">Status: Ready. Tekan START untuk GPS HP.</span>
       </div>
 
       <!-- Telemetry Gauges Grid -->
@@ -189,17 +198,17 @@
         </div>
 
         <div class="tele-card">
-          <span class="tele-label">Elevasi Saat Ini</span>
+          <span class="tele-label">Elevasi</span>
           <span class="tele-value" id="tele-ele-val">15 m</span>
         </div>
 
         <div class="tele-card">
-          <span class="tele-label">Sisa Baterai HP</span>
+          <span class="tele-label">Sisa Baterai</span>
           <span class="tele-value" id="tele-bat-val">100%</span>
         </div>
 
         <div class="tele-card">
-          <span class="tele-label">Buffer Offline Queue</span>
+          <span class="tele-label">Offline Buffer</span>
           <span class="tele-value" id="tele-queue-val" style="color:var(--secondary);">0 queued</span>
         </div>
       </div>
@@ -207,17 +216,17 @@
       <!-- Device Indicators -->
       <div class="device-indicators">
         <div class="indicator-item">
-          <span>💡 Screen WakeLock:</span> <b style="color:var(--status-moving);">ACTIVE</b>
+          <span>💡 WakeLock Screen:</span> <b style="color:var(--status-moving);">ACTIVE</b>
         </div>
         <div class="indicator-item">
-          <span>📍 Sensor Accuracy:</span> <b>High (&lt; 5m)</b>
+          <span>📍 GPS Accuracy:</span> <b>High (&lt; 5m)</b>
         </div>
       </div>
 
       <!-- Emergency SOS Section -->
       <div class="sos-container">
         <button id="btn-pwa-sos" class="btn-sos">
-          <span>🚨 EMERGENSI SOS (KIRIM LOKASI DARURAT)</span>
+          <span>🚨 EMERGENSI SOS (KIRIM LOKASI)</span>
         </button>
       </div>
 
@@ -227,32 +236,32 @@
   <!-- VIEW 3: ADMIN RACE CONTROL DASHBOARD -->
   <main id="view-admin" class="view-container">
     <div class="admin-dashboard">
-      <h1 style="font-size:1.3rem; font-weight:800; border-bottom:1px solid var(--border-glass); padding-bottom:0.5rem;">
+      <h1 style="font-size:1.2rem; font-weight:800; border-bottom:1px solid var(--border-glass); padding-bottom:0.4rem;">
         ⚙️ RACE CONTROL & DATA MANAGEMENT
       </h1>
 
       <div class="admin-grid">
         
-        <!-- Card 1: Data Fleet Reset / Clear Dummy -->
+        <!-- Card 1: Data Fleet Reset -->
         <div class="admin-card">
           <h3 class="admin-card-title">🧹 Data Fleet Reset</h3>
-          <p style="font-size:0.8rem; color:var(--text-muted);">
+          <p style="font-size:0.75rem; color:var(--text-muted);">
             Kosongkan data peserta dummy untuk pengujian dari keadaan bersih (*Clean State*) atau muat ulang sampel dummy.
           </p>
           <div style="display:flex; gap:0.5rem;">
-            <button id="btn-clear-riders" class="btn-secondary">🗑️ Clear Semua Rider</button>
-            <button id="btn-reset-dummy" class="btn-primary">🔄 Reload Sample Dummy</button>
+            <button id="btn-clear-riders" class="btn-secondary">🗑️ Clear Rider</button>
+            <button id="btn-reset-dummy" class="btn-primary">🔄 Reload Dummy</button>
           </div>
         </div>
 
         <!-- Card 2: GPX Route Management -->
         <div class="admin-card">
           <h3 class="admin-card-title">🗺️ Manajemen Rute GPX</h3>
-          <p style="font-size:0.8rem; color:var(--text-muted);">
+          <p style="font-size:0.75rem; color:var(--text-muted);">
             Upload file <b>.gpx</b> rute balapan kustom Anda untuk mengganti jalur di peta Spectator secara otomatis.
           </p>
           <div class="form-group">
-            <label>Pilih File GPX (.gpx)</label>
+            <label>File GPX (.gpx)</label>
             <input type="file" id="gpx-file-input" class="form-control" accept=".gpx">
           </div>
         </div>
@@ -260,21 +269,21 @@
         <!-- Card 3: Live Simulator Demo -->
         <div class="admin-card">
           <h3 class="admin-card-title">🏎️ Live Race Simulator</h3>
-          <p style="font-size:0.8rem; color:var(--text-muted);">
+          <p style="font-size:0.75rem; color:var(--text-muted);">
             Jalankan simulasi 5 rider pelacak bergerak di peta secara <i>real-time</i> tanpa harus turun ke jalan langsung.
           </p>
           <div class="sim-controls">
-            <button id="btn-toggle-sim" class="btn-primary">▶ START 5-RIDER SIMULATION</button>
+            <button id="btn-toggle-sim" class="btn-primary">▶ START SIMULATION</button>
           </div>
         </div>
 
         <!-- Card 4: Export Breadcrumb Trails -->
         <div class="admin-card">
-          <h3 class="admin-card-title">💾 Export Jejak Lintasan (GPX)</h3>
-          <p style="font-size:0.8rem; color:var(--text-muted);">
-            Unduh seluruh koordinat jejak (breadcrumbs) yang sudah dilewati peserta menjadi file format <b>.gpx</b>.
+          <h3 class="admin-card-title">💾 Export Jejak Lintasan</h3>
+          <p style="font-size:0.75rem; color:var(--text-muted);">
+            Unduh koordinat jejak yang dilewati peserta menjadi file format <b>.gpx</b>.
           </p>
-          <button id="btn-export-gpx" class="btn-secondary">📥 EXPORT JEJAK RIDER TO GPX</button>
+          <button id="btn-export-gpx" class="btn-secondary">📥 EXPORT JEJAK TO GPX</button>
         </div>
 
       </div>
