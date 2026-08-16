@@ -25,6 +25,15 @@
       <div class="brand-icon">📱</div>
     </div>
 
+    <!-- PWA Install Banner Card -->
+    <div class="install-pwa-card" id="pwa-install-card-login" style="display:flex; flex-direction:column; gap:0.4rem; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); padding:0.75rem; border-radius:12px;">
+      <div style="display:flex; align-items:center; justify-content:space-between;">
+        <span style="font-size:0.8rem; font-weight:700; color:#fff;">📲 DOWNLOAD APLIKASI TRACKER</span>
+        <button class="btn-install" id="btn-pwa-install-login" style="background:var(--primary); color:#000; border:none; padding:0.35rem 0.75rem; border-radius:6px; font-weight:800; cursor:pointer;">INSTALL</button>
+      </div>
+      <span style="font-size:0.65rem; color:var(--text-muted);">Tekan INSTALL untuk memasang aplikasi di layar utama HP Anda (Add to Home Screen).</span>
+    </div>
+
     <form id="rider-login-form" style="display:flex; flex-direction:column; gap:0.85rem;">
       <div class="form-group">
         <label>Nomor BIB Peserta</label>
@@ -36,7 +45,7 @@
         <input type="password" id="login-pin" class="form-control" placeholder="****" required>
       </div>
 
-      <button type="submit" class="btn-primary" style="margin-top:0.5rem; padding:0.75rem;">
+      <button type="submit" class="btn-primary" style="margin-top:0.3rem; padding:0.75rem;">
         🔐 LOGIN SEBAGAI PESERTA
       </button>
     </form>
@@ -61,10 +70,10 @@
       </div>
     </div>
 
-    <!-- PWA Install Prompt -->
-    <div class="install-pwa-card" id="pwa-install-card" style="display:none;">
-      <div class="install-text">📲 Install Aplikasi ke Home Screen HP Anda</div>
-      <button class="btn-install" id="btn-pwa-install">INSTALL</button>
+    <!-- PWA Install Prompt Banner inside dashboard -->
+    <div class="install-pwa-card" id="pwa-install-card-dashboard" style="display:flex; align-items:center; justify-content:space-between; background:rgba(56,189,248,0.08); border:1px solid rgba(56,189,248,0.25); padding:0.6rem 0.85rem; border-radius:10px;">
+      <span style="font-size:0.75rem; font-weight:700; color:#fff;">📲 Install Aplikasi ke HP Anda</span>
+      <button class="btn-install" id="btn-pwa-install-dashboard" style="background:var(--primary); color:#000; border:none; padding:0.3rem 0.65rem; border-radius:6px; font-size:0.75rem; font-weight:800; cursor:pointer;">INSTALL</button>
     </div>
 
     <!-- Main Action Button -->
@@ -73,7 +82,7 @@
         <span>START</span>
         <small>TRACKING</small>
       </button>
-      <span id="pwa-gps-status" style="font-size:0.7rem; color:var(--text-muted); text-align:center;">Status: Ready. Tekan START untuk kirim GPS HP ke Peta Publik.</span>
+      <span id="pwa-gps-status" style="font-size:0.7rem; color:var(--text-muted); text-align:center;">Status: Ready. Tekan START untuk GPS HP.</span>
     </div>
 
     <!-- Telemetry Gauges -->
@@ -117,7 +126,7 @@
     <!-- Emergency SOS Section -->
     <div class="sos-container">
       <button id="btn-pwa-sos" class="btn-sos">
-        <span>🚨 EMERGENSI SOS (KIRIM LOKASI DARURAT)</span>
+        <span>🚨 EMERGENSI SOS (KIRIM LOKASI)</span>
       </button>
     </div>
 

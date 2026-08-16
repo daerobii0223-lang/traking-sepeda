@@ -1,6 +1,6 @@
 /* ==========================================================================
    ADMIN RACE CONTROL PORTAL ENGINE (admin.html)
-   Handles Admin Login (admin/admin), Rider Generator, GPX Manager & Race Control
+   Handles Admin Login (admin/admin), Rider Generator, Status Monitor & Race Control
    ========================================================================== */
 
 import { generateFullRoutePoints, calculateDistance } from './mock-data.js';
@@ -75,9 +75,38 @@ class AdminApp {
       const res = await fetch('/api/riders');
       const riders = await res.json();
       this.renderRidersTable(riders);
+      this.updateSummaryCounters(riders);
     } catch (err) {
       console.error('Failed to fetch riders:', err);
     }
+  }
+
+  updateSummaryCounters(riders) {
+    const totalEl = document.getElementById('summary-total-riders');
+    const activeEl = document.getElementById('summary-active-riders');
+    const stoppedEl = document.getElementById('summary-stopped-riders');
+    const inactiveEl = document.getElementById('summary-inactive-riders');
+
+    if (!riders) return;
+
+    let activeCount = 0;
+    let stoppedCount = 0;
+    let inactiveCount = 0;
+
+    riders.forEach(r => {
+      if (r.lat === null || r.lng === null || r.status === 'registered') {
+        inactiveCount++;
+      } else if (r.status === 'moving') {
+        activeCount++;
+      } else {
+        stoppedCount++;
+      }
+    });
+
+    if (totalEl) totalEl.innerText = riders.length;
+    if (activeEl) activeEl.innerText = activeCount;
+    if (stoppedEl) stoppedEl.innerText = stoppedCount;
+    if (inactiveEl) inactiveEl.innerText = inactiveCount;
   }
 
   renderRidersTable(riders) {
@@ -87,7 +116,7 @@ class AdminApp {
     if (!riders || riders.length === 0) {
       tbody.innerHTML = `
         <tr>
-          <td colspan="6" style="padding:1rem; text-align:center; color:var(--text-dim);">
+          <td colspan="8" style="padding:1rem; text-align:center; color:var(--text-dim);">
             Belum ada akun peserta terdaftar. Buat akun baru di atas!
           </td>
         </tr>
@@ -97,6 +126,18 @@ class AdminApp {
 
     tbody.innerHTML = '';
     riders.forEach(r => {
+      let statusBadge = `<span style="background:rgba(255,255,255,0.05); color:#94a3b8; border:1px solid rgba(255,255,255,0.1); padding:0.15rem 0.45rem; border-radius:12px; font-weight:700;">⚪ BELUM START</span>`;
+      
+      if (r.lat !== null && r.lng !== null && r.status !== 'registered') {
+        if (r.status === 'moving') {
+          statusBadge = `<span style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); padding:0.15rem 0.45rem; border-radius:12px; font-weight:700;">🟢 LIVE MOVING (${r.speed || 0} km/h)</span>`;
+        } else if (r.status === 'stopped') {
+          statusBadge = `<span style="background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); padding:0.15rem 0.45rem; border-radius:12px; font-weight:700;">🟡 STOPPED</span>`;
+        } else if (r.status === 'scratch') {
+          statusBadge = `<span style="background:rgba(244,63,94,0.15); color:#fda4af; border:1px solid rgba(244,63,94,0.3); padding:0.15rem 0.45rem; border-radius:12px; font-weight:700;">🔴 SCRATCHED</span>`;
+        }
+      }
+
       const tr = document.createElement('tr');
       tr.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
       tr.innerHTML = `
@@ -104,6 +145,8 @@ class AdminApp {
         <td style="padding:0.6rem; font-weight:700;">${r.name}</td>
         <td style="padding:0.6rem; color:var(--text-muted);">${r.category || 'Solo'}</td>
         <td style="padding:0.6rem; font-family:monospace; color:var(--primary); font-weight:700;">${r.pin || '****'}</td>
+        <td style="padding:0.6rem;">${statusBadge}</td>
+        <td style="padding:0.6rem; font-family:monospace;">${r.battery || 100}%</td>
         <td style="padding:0.6rem; font-family:monospace;">${r.distanceKm || 0} KM</td>
         <td style="padding:0.6rem;">
           <button class="btn-delete-rider" data-bib="${r.bib}" style="background:rgba(244,63,94,0.15); color:#fda4af; border:1px solid rgba(244,63,94,0.3); padding:0.25rem 0.5rem; border-radius:5px; font-size:0.65rem; cursor:pointer;">

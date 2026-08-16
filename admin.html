@@ -70,6 +70,27 @@
     </header>
 
     <div class="admin-dashboard">
+
+      <!-- STATUS SUMMARY CARDS -->
+      <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:1rem; margin-bottom:1rem;">
+        <div class="tele-card" style="background:rgba(15, 23, 42, 0.9);">
+          <span class="tele-label">Total Akun Terdaftar</span>
+          <span class="tele-value" id="summary-total-riders" style="font-size:1.6rem; color:#fff;">0</span>
+        </div>
+        <div class="tele-card" style="background:rgba(16, 185, 129, 0.1); border-color:rgba(16, 185, 129, 0.3);">
+          <span class="tele-label" style="color:#34d399;">🟢 Aktif Kirim Lokasi GPS</span>
+          <span class="tele-value" id="summary-active-riders" style="font-size:1.6rem; color:#34d399;">0</span>
+        </div>
+        <div class="tele-card" style="background:rgba(245, 158, 11, 0.1); border-color:rgba(245, 158, 11, 0.3);">
+          <span class="tele-label" style="color:#fbbf24;">🟡 Stagnan / Stopped</span>
+          <span class="tele-value" id="summary-stopped-riders" style="font-size:1.6rem; color:#fbbf24;">0</span>
+        </div>
+        <div class="tele-card" style="background:rgba(255, 255, 255, 0.03);">
+          <span class="tele-label">⚪ Belum Start / Belum Login</span>
+          <span class="tele-value" id="summary-inactive-riders" style="font-size:1.6rem; color:#94a3b8;">0</span>
+        </div>
+      </div>
+
       <div class="admin-grid">
         
         <!-- CARD 1: BUAT AKUN PESERTA -->
@@ -151,7 +172,7 @@
 
       <!-- TABLE AKUN PESERTA TERDAFTAR -->
       <div class="admin-card" style="margin-top:1rem;">
-        <h3 class="admin-card-title">📋 Daftar Akun Peserta Terdaftar</h3>
+        <h3 class="admin-card-title">📋 Monitor Status Akun & Sinyal GPS Peserta</h3>
         
         <div style="overflow-x:auto;">
           <table style="width:100%; border-collapse:collapse; font-size:0.75rem; text-align:left;">
@@ -161,13 +182,15 @@
                 <th style="padding:0.5rem;">NAMA PESERTA</th>
                 <th style="padding:0.5rem;">KATEGORI</th>
                 <th style="padding:0.5rem;">PIN LOGIN</th>
+                <th style="padding:0.5rem;">STATUS SINYAL GPS</th>
+                <th style="padding:0.5rem;">BATTERY</th>
                 <th style="padding:0.5rem;">KM TEMP U H</th>
                 <th style="padding:0.5rem;">AKSI</th>
               </tr>
             </thead>
             <tbody id="admin-riders-table-body">
               <tr>
-                <td colspan="6" style="padding:1rem; text-align:center; color:var(--text-dim);">
+                <td colspan="8" style="padding:1rem; text-align:center; color:var(--text-dim);">
                   Belum ada akun peserta terdaftar. Buat akun baru di atas!
                 </td>
               </tr>

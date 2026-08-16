@@ -11,14 +11,11 @@
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230b0f19'/><path d='M256 96c-70.7 0-128 57.3-128 128 0 88 128 224 128 224s128-136 128-224c0-70.7-57.3-128-128-128zm0 176c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48z' fill='%2300f2fe'/><circle cx='256' cy='224' r='24' fill='%23ffffff'/></svg>">
 
-  <!-- Leaflet CSS & JS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-  <!-- Main Stylesheet -->
   <link rel="stylesheet" href="./src/styles/main.css">
 </head>
 <body>
@@ -51,11 +48,14 @@
     <div class="map-layout">
       <div id="leaflet-map"></div>
 
-      <!-- Tile Controls -->
+      <!-- Floating Tile Controls & Sidebar Toggle -->
       <div class="map-tile-controls">
         <button class="tile-btn active" data-tile="dark">Dark</button>
         <button class="tile-btn" data-tile="satellite">Satellite</button>
         <button class="tile-btn" data-tile="topo">Terrain</button>
+        <button id="btn-toggle-sidebar" class="tile-btn" style="background:rgba(56,189,248,0.15); color:var(--primary); font-weight:700;">
+          ◀ Sidebar
+        </button>
       </div>
 
       <!-- Spectator Floating Stats -->
@@ -80,12 +80,12 @@
         <button id="btn-mobile-elevation" class="btn-mobile-trigger">⛰️ Elevation</button>
       </div>
 
-      <!-- Leaderboard Drawer -->
+      <!-- Leaderboard Sidebar / Drawer (Collapsible) -->
       <aside class="leaderboard-drawer" id="leaderboard-drawer">
         <div class="drawer-header">
           <div class="drawer-title">
             <span>🏆 LEADERBOARD RACE</span>
-            <span style="font-size:0.65rem; color:var(--primary); font-weight:700;">LIVE STREAM</span>
+            <button id="btn-close-sidebar-x" style="background:none; border:none; color:var(--text-muted); font-size:1.1rem; cursor:pointer; padding:0 0.3rem;">✕</button>
           </div>
 
           <div class="search-box">
@@ -123,7 +123,6 @@
 
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Spectator Script -->
   <script type="module" src="./src/js/spectator.js"></script>
 </body>
 </html>

@@ -124,7 +124,7 @@ app.post('/api/auth/login', (req, res) => {
 });
 
 /* ==========================================================================
-   RIDER GPS TRACKING ENDPOINTS (STRICT BINDING PER BIB)
+   RIDER GPS TRACKING ENDPOINTS
    ========================================================================== */
 
 app.post('/api/location', (req, res) => {
@@ -137,7 +137,6 @@ app.post('/api/location', (req, res) => {
 
   const cleanBib = String(bib).trim();
 
-  // Verify PIN if credential exists for security
   if (db.credentials[cleanBib] && pin && db.credentials[cleanBib] !== String(pin).trim()) {
     return res.status(401).json({ error: 'Unauthorized PIN' });
   }
@@ -152,8 +151,8 @@ app.post('/api/location', (req, res) => {
       status: status || 'moving',
       speed: speed || 0,
       distanceKm: distanceKm || 0,
-      lat,
-      lng,
+      lat: Number(lat),
+      lng: Number(lng),
       battery: battery || 100,
       lastUpdate: lastUpdate || new Date().toLocaleTimeString(),
       trail: []
@@ -171,7 +170,6 @@ app.post('/api/location', (req, res) => {
 
   if (!rider.trail) rider.trail = [];
   
-  // Deduplicate consecutive identical coordinates
   const lastTrail = rider.trail[rider.trail.length - 1];
   if (!lastTrail || Math.abs(lastTrail.lat - lat) > 0.0001 || Math.abs(lastTrail.lng - lng) > 0.0001) {
     rider.trail.push({ lat: Number(lat), lng: Number(lng), timestamp: Date.now() });
@@ -180,7 +178,6 @@ app.post('/api/location', (req, res) => {
 
   saveDB();
 
-  // Broadcast location update of THIS specific rider to all connected public spectators
   broadcastToPublic('LOCATION_UPDATE', rider);
 
   res.json({ success: true });
@@ -196,6 +193,7 @@ app.post('/api/sos', (req, res) => {
    ADMIN ENDPOINTS
    ========================================================================== */
 
+// Admin Creates New Rider Account: Default lat & lng are NULL so no dummy marker spawns on map!
 app.post('/api/admin/riders', (req, res) => {
   const { bib, name, category, pin } = req.body;
 
@@ -212,11 +210,11 @@ app.post('/api/admin/riders', (req, res) => {
     bib: cleanBib,
     name: String(name).trim(),
     category: category || 'Solo Unsupported',
-    status: 'stopped',
+    status: 'registered', // Registered by admin, not active yet!
     speed: 0,
     distanceKm: 0,
-    lat: -6.1754,
-    lng: 106.8272,
+    lat: null, // NO DUMMY DEFAULT COORDINATES!
+    lng: null, // NO DUMMY DEFAULT COORDINATES!
     battery: 100,
     lastUpdate: 'Belum Aktif',
     trail: []

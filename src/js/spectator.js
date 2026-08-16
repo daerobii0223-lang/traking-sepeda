@@ -1,6 +1,6 @@
 /* ==========================================================================
    PUBLIC LIVE SPECTATOR MAP ENGINE (index.html)
-   Handles Public Leaflet Map, Public Leaderboard, Elevation Profile & SSE Stream
+   Handles Public Leaflet Map, Public Leaderboard, Elevation Profile, Collapsible Sidebar & SSE Stream
    ========================================================================== */
 
 import { RacemapEngine } from './map.js';
@@ -91,7 +91,7 @@ class SpectatorApp {
 
   setupUI() {
     // Tile Layer Switchers
-    const tileBtns = document.querySelectorAll('.tile-btn');
+    const tileBtns = document.querySelectorAll('.tile-btn[data-tile]');
     tileBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         tileBtns.forEach(b => b.classList.remove('active'));
@@ -99,6 +99,31 @@ class SpectatorApp {
         this.mapEngine.setTileLayer(btn.dataset.tile);
       });
     });
+
+    // Sidebar Toggle Controls
+    const btnToggleSidebar = document.getElementById('btn-toggle-sidebar');
+    const btnCloseSidebarX = document.getElementById('btn-close-sidebar-x');
+    const drawerLeaderboard = document.getElementById('leaderboard-drawer');
+
+    if (btnToggleSidebar && drawerLeaderboard) {
+      btnToggleSidebar.addEventListener('click', () => {
+        drawerLeaderboard.classList.toggle('collapsed');
+        if (btnToggleSidebar) {
+          btnToggleSidebar.innerText = drawerLeaderboard.classList.contains('collapsed') 
+            ? '▶ Sidebar' 
+            : '◀ Sidebar';
+        }
+        setTimeout(() => this.mapEngine.map.invalidateSize(), 300);
+      });
+    }
+
+    if (btnCloseSidebarX && drawerLeaderboard) {
+      btnCloseSidebarX.addEventListener('click', () => {
+        drawerLeaderboard.classList.add('collapsed');
+        if (btnToggleSidebar) btnToggleSidebar.innerText = '▶ Sidebar';
+        setTimeout(() => this.mapEngine.map.invalidateSize(), 300);
+      });
+    }
 
     // Search Box
     const searchInput = document.getElementById('search-rider');
@@ -123,7 +148,6 @@ class SpectatorApp {
     // Mobile Floating Triggers
     const btnMobileLeaderboard = document.getElementById('btn-mobile-leaderboard');
     const btnMobileElevation = document.getElementById('btn-mobile-elevation');
-    const drawerLeaderboard = document.getElementById('leaderboard-drawer');
     const drawerElevation = document.getElementById('elevation-profile-bar');
 
     if (btnMobileLeaderboard && drawerLeaderboard) {
@@ -173,6 +197,14 @@ class SpectatorApp {
       if (index === 1) rankBadge = '🥈 #2';
       if (index === 2) rankBadge = '🥉 #3';
 
+      let statusDotClass = rider.status || 'stopped';
+      let statusLabel = (rider.status || 'stopped').toUpperCase();
+
+      if (rider.lat === null || rider.lng === null || rider.status === 'registered') {
+        statusDotClass = 'registered';
+        statusLabel = 'BELUM START';
+      }
+
       card.innerHTML = `
         <div class="rider-card-top">
           <div class="rider-info">
@@ -183,7 +215,7 @@ class SpectatorApp {
         </div>
         <div style="display:flex; justify-content:space-between; font-size:0.65rem; color:var(--text-muted);">
           <span>${rider.category || 'Solo'}</span>
-          <span><span class="rider-status-dot ${rider.status || 'stopped'}"></span> ${(rider.status || 'stopped').toUpperCase()}</span>
+          <span><span class="rider-status-dot ${statusDotClass}"></span> ${statusLabel}</span>
         </div>
         <div class="rider-metrics">
           <div class="metric-item">
@@ -207,13 +239,19 @@ class SpectatorApp {
       const btnFollow = card.querySelector('.btn-follow');
       btnFollow.addEventListener('click', (e) => {
         e.stopPropagation();
-        if (this.mapEngine) this.mapEngine.followRider(rider.bib);
+        if (rider.lat !== null && rider.lng !== null) {
+          if (this.mapEngine) this.mapEngine.followRider(rider.bib);
+        } else {
+          alert(`Peserta BIB #${rider.bib} (${rider.name}) belum mengaktifkan lokasi/start tracking di HP.`);
+        }
         const drawer = document.getElementById('leaderboard-drawer');
         if (drawer) drawer.classList.remove('mobile-open');
       });
 
       card.addEventListener('click', () => {
-        if (this.mapEngine) this.mapEngine.followRider(rider.bib);
+        if (rider.lat !== null && rider.lng !== null && this.mapEngine) {
+          this.mapEngine.followRider(rider.bib);
+        }
       });
 
       listContainer.appendChild(card);
