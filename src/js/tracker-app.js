@@ -1,6 +1,6 @@
 /* ==========================================================================
    RIDER MOBILE TRACKER PWA ENGINE (tracker.html)
-   Handles BIB/PIN Authentication, Geolocation Watcher, WakeLock, & SOS Alerts
+   Handles BIB/PIN Authentication, Geolocation Watcher, WakeLock, Audio Keep-Alive, & SOS Alerts
    ========================================================================== */
 
 import { calculateDistance } from './mock-data.js';
@@ -13,6 +13,7 @@ class RiderApp {
     this.isTracking = false;
     this.watchId = null;
     this.wakeLock = null;
+    this.audioKeepAlive = null;
 
     this.lastPosition = null;
     this.totalDistanceKm = 0;
@@ -21,9 +22,32 @@ class RiderApp {
     this.batteryLevel = 100;
     this.isCharging = false;
 
+    this.initAudioKeepAlive();
     this.checkSession();
     this.setupListeners();
     this.initBattery();
+  }
+
+  // Create Silent Base64 Audio Loop to prevent OS from killing JS thread when screen is locked/browser closed
+  initAudioKeepAlive() {
+    // 0.1s Silent WAV audio file base64 data URI
+    const silentWav = 'data:audio/wav;base64,UklGRigAAABXQVZFZm10IBIAAAABAAEARKwAAIhYAQACABAAAABkYXRhAgAAAAEA';
+    this.audioKeepAlive = new Audio(silentWav);
+    this.audioKeepAlive.loop = true;
+  }
+
+  startAudioKeepAlive() {
+    if (this.audioKeepAlive) {
+      this.audioKeepAlive.play().catch(e => {
+        console.log('Audio Keep-Alive autoplay notice:', e);
+      });
+    }
+  }
+
+  stopAudioKeepAlive() {
+    if (this.audioKeepAlive) {
+      this.audioKeepAlive.pause();
+    }
   }
 
   checkSession() {
@@ -34,6 +58,11 @@ class RiderApp {
         this.authRider = session.rider;
         this.authPin = session.pin;
         this.showDashboard();
+
+        // Auto-resume tracking if active flag was set
+        if (session.isTrackingActive) {
+          this.startTracking();
+        }
       } catch (e) {
         this.showLogin();
       }
@@ -62,7 +91,6 @@ class RiderApp {
   }
 
   setupListeners() {
-    // Rider Login Form Submission
     const loginForm = document.getElementById('rider-login-form');
     if (loginForm) {
       loginForm.addEventListener('submit', async (e) => {
@@ -81,7 +109,11 @@ class RiderApp {
           if (data.success) {
             this.authRider = data.rider;
             this.authPin = pin;
-            localStorage.setItem('racemap_rider_session', JSON.stringify({ rider: data.rider, pin }));
+            localStorage.setItem('racemap_rider_session', JSON.stringify({
+              rider: data.rider,
+              pin,
+              isTrackingActive: false
+            }));
             this.showDashboard();
           } else {
             alert(data.error || 'Login Gagal!');
@@ -92,7 +124,6 @@ class RiderApp {
       });
     }
 
-    // Toggle Tracking
     const btnToggle = document.getElementById('btn-toggle-tracker');
     if (btnToggle) {
       btnToggle.addEventListener('click', () => {
@@ -104,17 +135,15 @@ class RiderApp {
       });
     }
 
-    // SOS Emergency
     const btnSos = document.getElementById('btn-pwa-sos');
     if (btnSos) {
       btnSos.addEventListener('click', () => {
-        if (confirm("🚨 Apakah Anda yakin ingin mengirim SINYAL SOS EMERGENSI ke Race Control Publik?")) {
+        if (confirm("🚨 Send Emergency SOS Alert to Race Control & Public Server?")) {
           this.triggerSOS();
         }
       });
     }
 
-    // Logout
     const btnLogout = document.getElementById('btn-logout-rider');
     if (btnLogout) {
       btnLogout.addEventListener('click', () => {
@@ -162,6 +191,14 @@ class RiderApp {
 
     this.isTracking = true;
     this.requestWakeLock();
+    this.startAudioKeepAlive();
+
+    // Save tracking session flag
+    localStorage.setItem('racemap_rider_session', JSON.stringify({
+      rider: this.authRider,
+      pin: this.authPin,
+      isTrackingActive: true
+    }));
 
     const geoOptions = {
       enableHighAccuracy: true,
@@ -192,6 +229,14 @@ class RiderApp {
 
     this.isTracking = false;
     this.releaseWakeLock();
+    this.stopAudioKeepAlive();
+
+    localStorage.setItem('racemap_rider_session', JSON.stringify({
+      rider: this.authRider,
+      pin: this.authPin,
+      isTrackingActive: false
+    }));
+
     this.updateUI();
   }
 
@@ -243,7 +288,6 @@ class RiderApp {
       lastUpdate: new Date().toLocaleTimeString()
     };
 
-    // Send location to server
     try {
       await fetch('/api/location', {
         method: 'POST',

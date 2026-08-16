@@ -1,6 +1,6 @@
 /* ==========================================================================
    ADMIN RACE CONTROL PORTAL ENGINE (admin.html)
-   Handles Rider Account Generator, GPX Route Uploader, Race Simulator, & Event Reset
+   Handles Admin Login (admin/admin), Rider Generator, GPX Manager & Race Control
    ========================================================================== */
 
 import { generateFullRoutePoints, calculateDistance } from './mock-data.js';
@@ -11,9 +11,63 @@ class AdminApp {
     this.isSimulating = false;
     this.simRoutePoints = generateFullRoutePoints();
 
-    this.fetchRiders();
-    this.setupForm();
-    this.setupListeners();
+    this.checkAdminSession();
+    this.setupAdminLogin();
+  }
+
+  checkAdminSession() {
+    const token = sessionStorage.getItem('racemap_admin_token');
+    const loginCard = document.getElementById('admin-login-card');
+    const dashboard = document.getElementById('admin-dashboard-container');
+
+    if (token === 'admin-authenticated-session-888') {
+      if (loginCard) loginCard.style.display = 'none';
+      if (dashboard) dashboard.style.display = 'block';
+
+      this.fetchRiders();
+      this.setupForm();
+      this.setupListeners();
+    } else {
+      if (loginCard) loginCard.style.display = 'flex';
+      if (dashboard) dashboard.style.display = 'none';
+    }
+  }
+
+  setupAdminLogin() {
+    const loginForm = document.getElementById('admin-login-form');
+    if (loginForm) {
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('admin-user-input').value.trim();
+        const password = document.getElementById('admin-pass-input').value.trim();
+
+        try {
+          const res = await fetch('/api/auth/admin-login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+          });
+
+          const data = await res.json();
+          if (data.success) {
+            sessionStorage.setItem('racemap_admin_token', data.token);
+            this.checkAdminSession();
+          } else {
+            alert(data.error || 'Login Admin Gagal!');
+          }
+        } catch (err) {
+          alert('Error: ' + err.message);
+        }
+      });
+    }
+
+    const btnLogout = document.getElementById('btn-admin-logout');
+    if (btnLogout) {
+      btnLogout.addEventListener('click', () => {
+        sessionStorage.removeItem('racemap_admin_token');
+        this.checkAdminSession();
+      });
+    }
   }
 
   async fetchRiders() {
@@ -98,7 +152,6 @@ class AdminApp {
   }
 
   setupListeners() {
-    // Mode Switcher
     const modeSelect = document.getElementById('admin-event-mode');
     if (modeSelect) {
       modeSelect.addEventListener('change', async (e) => {
@@ -114,7 +167,6 @@ class AdminApp {
       });
     }
 
-    // GPX Route Upload
     const gpxInput = document.getElementById('admin-gpx-input');
     if (gpxInput) {
       gpxInput.addEventListener('change', (e) => {
@@ -127,7 +179,6 @@ class AdminApp {
       });
     }
 
-    // Simulator Toggle
     const btnSim = document.getElementById('btn-toggle-sim');
     if (btnSim) {
       btnSim.addEventListener('click', () => {
@@ -139,7 +190,6 @@ class AdminApp {
       });
     }
 
-    // Clear Event Data
     const btnClear = document.getElementById('btn-clear-event');
     if (btnClear) {
       btnClear.addEventListener('click', async () => {
@@ -215,7 +265,6 @@ class AdminApp {
       btnSim.classList.add('btn-secondary');
     }
 
-    // Temporary demo riders
     const demoRiders = [
       { bib: '888', name: 'Demo Rider 1', category: 'Solo Unsupported', index: 50 },
       { bib: '889', name: 'Demo Rider 2', category: 'Pair Category', index: 20 }

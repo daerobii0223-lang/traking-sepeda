@@ -43,7 +43,6 @@ function saveDB() {
 
 loadDB();
 
-// Server-Sent Events (SSE) clients for Public Live Stream
 let sseClients = [];
 
 function broadcastToPublic(event, data) {
@@ -56,12 +55,10 @@ function broadcastToPublic(event, data) {
    PUBLIC SPECTATOR ENDPOINTS
    ========================================================================== */
 
-// 1. Get All Active Riders for Spectator View
 app.get('/api/riders', (req, res) => {
   res.json(Object.values(db.riders));
 });
 
-// 2. Get Event GPX Route & Mode
 app.get('/api/route', (req, res) => {
   res.json({
     route: db.gpxRoute,
@@ -70,7 +67,6 @@ app.get('/api/route', (req, res) => {
   });
 });
 
-// 3. SSE Stream for Real-time Public Spectator Map
 app.get('/api/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
@@ -81,7 +77,6 @@ app.get('/api/events', (req, res) => {
   const newClient = { id: clientId, res };
   sseClients.push(newClient);
 
-  // Send current state to newly connected spectator
   res.write(`event: INITIAL_STATE\ndata: ${JSON.stringify({
     riders: Object.values(db.riders),
     route: db.gpxRoute,
@@ -95,8 +90,18 @@ app.get('/api/events', (req, res) => {
 });
 
 /* ==========================================================================
-   RIDER TRACKER AUTH & GPS ENDPOINTS
+   AUTHENTICATION ENDPOINTS
    ========================================================================== */
+
+// Admin Login (Username: admin, Password: admin)
+app.post('/api/auth/admin-login', (req, res) => {
+  const { username, password } = req.body;
+  if (username === 'admin' && password === 'admin') {
+    return res.json({ success: true, token: 'admin-authenticated-session-888' });
+  } else {
+    return res.status(401).json({ error: 'Username atau Password Admin Salah!' });
+  }
+});
 
 // Rider Login with BIB & PIN
 app.post('/api/auth/login', (req, res) => {
@@ -120,7 +125,10 @@ app.post('/api/auth/login', (req, res) => {
   }
 });
 
-// Rider sends GPS Location Update
+/* ==========================================================================
+   RIDER GPS TRACKING ENDPOINTS
+   ========================================================================== */
+
 app.post('/api/location', (req, res) => {
   const data = req.body;
   const { bib, pin, lat, lng, speed, distanceKm, battery, status, lastUpdate } = data;
@@ -129,7 +137,6 @@ app.post('/api/location', (req, res) => {
 
   const cleanBib = String(bib).trim();
 
-  // Verify PIN if credential exists
   if (db.credentials[cleanBib] && pin && db.credentials[cleanBib] !== String(pin).trim()) {
     return res.status(401).json({ error: 'Unauthorized PIN' });
   }
@@ -167,13 +174,11 @@ app.post('/api/location', (req, res) => {
 
   saveDB();
 
-  // Broadcast to all public spectators in real-time
   broadcastToPublic('LOCATION_UPDATE', rider);
 
   res.json({ success: true });
 });
 
-// Emergency SOS Alert
 app.post('/api/sos', (req, res) => {
   const data = req.body;
   broadcastToPublic('SOS_ALERT', data);
@@ -184,7 +189,6 @@ app.post('/api/sos', (req, res) => {
    ADMIN RACE CONTROL ENDPOINTS
    ========================================================================== */
 
-// Admin Creates New Rider Account (BIB, Name, Category, PIN)
 app.post('/api/admin/riders', (req, res) => {
   const { bib, name, category, pin } = req.body;
 
@@ -217,7 +221,6 @@ app.post('/api/admin/riders', (req, res) => {
   res.json({ success: true, rider: db.riders[cleanBib] });
 });
 
-// Admin Deletes Rider Account
 app.delete('/api/admin/riders/:bib', (req, res) => {
   const bib = String(req.params.bib).trim();
   delete db.riders[bib];
@@ -228,7 +231,6 @@ app.delete('/api/admin/riders/:bib', (req, res) => {
   res.json({ success: true });
 });
 
-// Admin Uploads GPX Route & Checkpoints
 app.post('/api/admin/gpx', (req, res) => {
   const { routePoints, checkpoints } = req.body;
   if (!routePoints) return res.status(400).json({ error: 'No route data' });
@@ -242,7 +244,6 @@ app.post('/api/admin/gpx', (req, res) => {
   res.json({ success: true });
 });
 
-// Admin Toggles Race Mode ("fixed" vs "free")
 app.post('/api/admin/mode', (req, res) => {
   const { mode } = req.body;
   db.mode = mode || 'fixed';
@@ -252,7 +253,6 @@ app.post('/api/admin/mode', (req, res) => {
   res.json({ success: true, mode: db.mode });
 });
 
-// Admin Clear All Event Data
 app.post('/api/admin/clear', (req, res) => {
   db.riders = {};
   db.credentials = {};
@@ -265,7 +265,7 @@ app.post('/api/admin/clear', (req, res) => {
 });
 
 /* ==========================================================================
-   PAGE ROUTING (Separate Clean Pages)
+   PAGE ROUTING
    ========================================================================== */
 
 app.get('/tracker', (req, res) => {
