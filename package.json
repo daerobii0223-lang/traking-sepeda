@@ -1,0 +1,22 @@
+{
+  "name": "web-racemap-ultra",
+  "version": "1.0.0",
+  "description": "Live Race Tracking & PWA Mobile GPS Tracker for Ultra-Cycling Events",
+  "main": "index.html",
+  "scripts": {
+    "dev": "npx serve .",
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "racemap",
+    "gps-tracker",
+    "pwa",
+    "ultra-cycling",
+    "bentang-jawa",
+    "leaflet",
+    "live-tracking"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "type": "commonjs"
+}
