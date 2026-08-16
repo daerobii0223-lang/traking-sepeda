@@ -4,17 +4,16 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#070a12">
-  <meta name="description" content="Aplikasi Web Live Race Tracking & GPS Tracker Mobile Ultra-Cycling Event (Racemap & Bentang Jawa Style)">
+  <meta name="description" content="Public Live Spectator Map - Racemap Ultra Live Race Tracking">
   
-  <title>RACEMAP ULTRA - Live Race Tracking & Mobile GPS Tracker</title>
+  <title>RACEMAP ULTRA - Live Spectator Race Map</title>
 
-  <!-- PWA Manifest & Favicon -->
   <link rel="manifest" href="./manifest.json">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230b0f19'/><path d='M256 96c-70.7 0-128 57.3-128 128 0 88 128 224 128 224s128-136 128-224c0-70.7-57.3-128-128-128zm0 176c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48z' fill='%2300f2fe'/><circle cx='256' cy='224' r='24' fill='%23ffffff'/></svg>">
 
   <!-- Leaflet CSS & JS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -24,96 +23,76 @@
 </head>
 <body>
 
-  <!-- Top Navigation Header -->
+  <!-- Top Navigation Header for Public Spectator -->
   <header class="navbar">
     <div class="brand">
       <div class="brand-icon">⚡</div>
       <div>
         <span class="brand-title">RACEMAP ULTRA</span>
-        <span class="mode-badge">BENTANG JAWA</span>
+        <span class="mode-badge" id="event-mode-badge">PUBLIC MAP</span>
       </div>
     </div>
 
-    <!-- Mode Switcher Pill (Fixed GPX Route vs Free Tracking) -->
-    <div class="route-mode-pill">
-      <label for="toggle-mode-checkbox" id="mode-indicator-text">FIXED GPX</label>
-      <label class="switch-toggle">
-        <input type="checkbox" id="toggle-mode-checkbox">
-        <span class="switch-slider"></span>
-      </label>
-    </div>
-
-    <!-- View Navigation Tabs -->
-    <nav class="nav-tabs">
-      <button class="tab-btn active" data-view="view-spectator">
-        <span>🗺️</span>
-        <span class="tab-text">Map</span>
-      </button>
-      <button class="tab-btn" data-view="view-tracker">
+    <!-- Navigation Links -->
+    <div style="display:flex; align-items:center; gap:0.5rem;">
+      <a href="/tracker" class="tab-btn" style="text-decoration:none;">
         <span>📱</span>
-        <span class="tab-text">Tracker</span>
-      </button>
-      <button class="tab-btn" data-view="view-admin">
+        <span class="tab-text">Rider Tracker</span>
+      </a>
+      <a href="/admin" class="tab-btn" style="text-decoration:none;">
         <span>⚙️</span>
-        <span class="tab-text">Control</span>
-      </button>
-    </nav>
+        <span class="tab-text">Admin</span>
+      </a>
+    </div>
   </header>
 
-  <!-- VIEW 1: SPECTATOR LIVE MAP VIEW -->
+  <!-- PUBLIC SPECTATOR LIVE MAP VIEW -->
   <main id="view-spectator" class="view-container active">
     <div class="map-layout">
-      <!-- Leaflet Map Canvas -->
       <div id="leaflet-map"></div>
 
-      <!-- Tile Layer Switcher Controls -->
+      <!-- Tile Controls -->
       <div class="map-tile-controls">
         <button class="tile-btn active" data-tile="dark">Dark</button>
         <button class="tile-btn" data-tile="satellite">Satellite</button>
         <button class="tile-btn" data-tile="topo">Terrain</button>
       </div>
 
-      <!-- Spectator Stats Bar Overlay -->
+      <!-- Spectator Floating Stats -->
       <div class="spectator-stats-overlay">
         <div class="stat-box">
-          <span class="label">Aktif</span>
-          <span class="value" id="stat-active-riders">4 / 5</span>
+          <span class="label">Peserta Aktif</span>
+          <span class="value" id="stat-active-riders">0 / 0</span>
         </div>
         <div class="stat-box" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 0.6rem;">
           <span class="label">Lead KM</span>
-          <span class="value" id="stat-leader-km">580.2</span>
+          <span class="value" id="stat-leader-km">0.0 KM</span>
         </div>
         <div class="stat-box" style="border-left: 1px solid rgba(255,255,255,0.08); padding-left: 0.6rem;">
           <span class="label">Avg Spd</span>
-          <span class="value" id="stat-avg-speed">26.3</span>
+          <span class="value" id="stat-avg-speed">0.0 km/h</span>
         </div>
       </div>
 
       <!-- Mobile Floating Drawer Triggers -->
       <div class="mobile-map-triggers">
-        <button id="btn-mobile-leaderboard" class="btn-mobile-trigger">
-          🏆 Leaderboard
-        </button>
-        <button id="btn-mobile-elevation" class="btn-mobile-trigger">
-          ⛰️ Elevation
-        </button>
+        <button id="btn-mobile-leaderboard" class="btn-mobile-trigger">🏆 Leaderboard</button>
+        <button id="btn-mobile-elevation" class="btn-mobile-trigger">⛰️ Elevation</button>
       </div>
 
-      <!-- Leaderboard Sidebar / Drawer -->
+      <!-- Leaderboard Drawer -->
       <aside class="leaderboard-drawer" id="leaderboard-drawer">
         <div class="drawer-header">
           <div class="drawer-title">
             <span>🏆 LEADERBOARD RACE</span>
-            <button id="btn-close-drawer" style="display:none; background:none; border:none; color:var(--text-muted); font-size:1rem; cursor:pointer;">✖</button>
+            <span style="font-size:0.65rem; color:var(--primary); font-weight:700;">LIVE STREAM</span>
           </div>
 
-          <!-- Search Input -->
           <div class="search-box">
             <span class="search-icon">🔍</span>
             <input type="text" id="search-rider" placeholder="Cari Peserta / BIB #...">
           </div>
 
-          <!-- Category Chips -->
           <div class="cat-filters">
             <button class="cat-chip active" data-cat="ALL">Semua</button>
             <button class="cat-chip" data-cat="SOLO">Solo</button>
@@ -122,18 +101,19 @@
           </div>
         </div>
 
-        <!-- Rider Cards List -->
         <div class="rider-list" id="rider-leaderboard-list">
-          <!-- Dynamic Rider Cards inserted by JS -->
+          <div style="text-align:center; padding:1.5rem; color:#64748b; font-size:0.75rem;">
+            Belum ada data peserta terdaftar
+          </div>
         </div>
       </aside>
     </div>
 
-    <!-- Bottom Elevation Profile Bar -->
+    <!-- Bottom Elevation Bar -->
     <section class="elevation-profile-bar" id="elevation-profile-bar">
       <div class="elevation-header">
         <span class="elevation-title">⛰️ Profil Ketinggian Rute</span>
-        <button id="btn-close-elevation" style="display:none; background:none; border:none; color:var(--text-muted); font-size:0.8rem; cursor:pointer;">✖ Tutup</button>
+        <span id="route-distance-text" style="font-size:0.7rem; color:var(--primary); font-weight:600;">-- KM</span>
       </div>
       <div class="chart-container">
         <canvas id="elevation-chart"></canvas>
@@ -141,159 +121,9 @@
     </section>
   </main>
 
-  <!-- VIEW 2: RIDER MOBILE TRACKER PWA VIEW -->
-  <main id="view-tracker" class="view-container">
-    <div class="pwa-phone-container">
-      
-      <!-- PWA Header Bar -->
-      <div class="pwa-header">
-        <div>
-          <h2 class="pwa-title">RIDER MOBILE TRACKER</h2>
-          <span style="font-size:0.65rem; color:var(--text-muted);">GPS Web App Tracker</span>
-        </div>
-        <div id="pwa-status-badge" class="pwa-status-badge off">
-          <span class="pulse-dot"></span> OFF / PAUSED
-        </div>
-      </div>
-
-      <!-- Install PWA Card Banner -->
-      <div class="install-pwa-card" id="pwa-install-card" style="display:none;">
-        <div class="install-text">
-          📲 Install Aplikasi ke HP Anda
-        </div>
-        <button class="btn-install" id="btn-pwa-install">INSTALL</button>
-      </div>
-
-      <!-- Rider Profile Form -->
-      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:0.5rem;">
-        <div class="form-group">
-          <label>BIB #</label>
-          <input type="text" id="pwa-rider-bib" class="form-control" value="777">
-        </div>
-        <div class="form-group">
-          <label>Nama Peserta</label>
-          <input type="text" id="pwa-rider-name" class="form-control" value="Saya (Rider HP)">
-        </div>
-      </div>
-
-      <!-- Main Action Button -->
-      <div class="tracker-action-area">
-        <button id="btn-toggle-tracker" class="btn-start-tracking">
-          <span>START</span>
-          <small>TRACKING</small>
-        </button>
-        <span id="pwa-gps-status" style="font-size:0.7rem; color:var(--text-muted); text-align:center;">Status: Ready. Tekan START untuk GPS HP.</span>
-      </div>
-
-      <!-- Telemetry Gauges Grid -->
-      <div class="telemetry-grid">
-        <div class="tele-card main-speed">
-          <span class="tele-label">Kecepatan Saat Ini</span>
-          <span class="tele-value" id="tele-speed-val">0.0 km/h</span>
-        </div>
-
-        <div class="tele-card">
-          <span class="tele-label">Jarak Tempuh</span>
-          <span class="tele-value" id="tele-dist-val">0.00 KM</span>
-        </div>
-
-        <div class="tele-card">
-          <span class="tele-label">Elevasi</span>
-          <span class="tele-value" id="tele-ele-val">15 m</span>
-        </div>
-
-        <div class="tele-card">
-          <span class="tele-label">Sisa Baterai</span>
-          <span class="tele-value" id="tele-bat-val">100%</span>
-        </div>
-
-        <div class="tele-card">
-          <span class="tele-label">Offline Buffer</span>
-          <span class="tele-value" id="tele-queue-val" style="color:var(--secondary);">0 queued</span>
-        </div>
-      </div>
-
-      <!-- Device Indicators -->
-      <div class="device-indicators">
-        <div class="indicator-item">
-          <span>💡 WakeLock Screen:</span> <b style="color:var(--status-moving);">ACTIVE</b>
-        </div>
-        <div class="indicator-item">
-          <span>📍 GPS Accuracy:</span> <b>High (&lt; 5m)</b>
-        </div>
-      </div>
-
-      <!-- Emergency SOS Section -->
-      <div class="sos-container">
-        <button id="btn-pwa-sos" class="btn-sos">
-          <span>🚨 EMERGENSI SOS (KIRIM LOKASI)</span>
-        </button>
-      </div>
-
-    </div>
-  </main>
-
-  <!-- VIEW 3: ADMIN RACE CONTROL DASHBOARD -->
-  <main id="view-admin" class="view-container">
-    <div class="admin-dashboard">
-      <h1 style="font-size:1.2rem; font-weight:800; border-bottom:1px solid var(--border-glass); padding-bottom:0.4rem;">
-        ⚙️ RACE CONTROL & DATA MANAGEMENT
-      </h1>
-
-      <div class="admin-grid">
-        
-        <!-- Card 1: Data Fleet Reset -->
-        <div class="admin-card">
-          <h3 class="admin-card-title">🧹 Data Fleet Reset</h3>
-          <p style="font-size:0.75rem; color:var(--text-muted);">
-            Kosongkan data peserta dummy untuk pengujian dari keadaan bersih (*Clean State*) atau muat ulang sampel dummy.
-          </p>
-          <div style="display:flex; gap:0.5rem;">
-            <button id="btn-clear-riders" class="btn-secondary">🗑️ Clear Rider</button>
-            <button id="btn-reset-dummy" class="btn-primary">🔄 Reload Dummy</button>
-          </div>
-        </div>
-
-        <!-- Card 2: GPX Route Management -->
-        <div class="admin-card">
-          <h3 class="admin-card-title">🗺️ Manajemen Rute GPX</h3>
-          <p style="font-size:0.75rem; color:var(--text-muted);">
-            Upload file <b>.gpx</b> rute balapan kustom Anda untuk mengganti jalur di peta Spectator secara otomatis.
-          </p>
-          <div class="form-group">
-            <label>File GPX (.gpx)</label>
-            <input type="file" id="gpx-file-input" class="form-control" accept=".gpx">
-          </div>
-        </div>
-
-        <!-- Card 3: Live Simulator Demo -->
-        <div class="admin-card">
-          <h3 class="admin-card-title">🏎️ Live Race Simulator</h3>
-          <p style="font-size:0.75rem; color:var(--text-muted);">
-            Jalankan simulasi 5 rider pelacak bergerak di peta secara <i>real-time</i> tanpa harus turun ke jalan langsung.
-          </p>
-          <div class="sim-controls">
-            <button id="btn-toggle-sim" class="btn-primary">▶ START SIMULATION</button>
-          </div>
-        </div>
-
-        <!-- Card 4: Export Breadcrumb Trails -->
-        <div class="admin-card">
-          <h3 class="admin-card-title">💾 Export Jejak Lintasan</h3>
-          <p style="font-size:0.75rem; color:var(--text-muted);">
-            Unduh koordinat jejak yang dilewati peserta menjadi file format <b>.gpx</b>.
-          </p>
-          <button id="btn-export-gpx" class="btn-secondary">📥 EXPORT JEJAK TO GPX</button>
-        </div>
-
-      </div>
-    </div>
-  </main>
-
-  <!-- Global Toast Notifications -->
   <div id="toast-container" class="toast-container"></div>
 
-  <!-- Entry Script -->
-  <script type="module" src="./src/js/app.js"></script>
+  <!-- Spectator Script -->
+  <script type="module" src="./src/js/spectator.js"></script>
 </body>
 </html>

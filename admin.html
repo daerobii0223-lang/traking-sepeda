@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#070a12">
+  <meta name="description" content="Admin & Race Control Dashboard - Racemap Ultra">
+  
+  <title>Admin & Race Control Dashboard - Racemap Ultra</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230b0f19'/><path d='M256 96c-70.7 0-128 57.3-128 128 0 88 128 224 128 224s128-136 128-224c0-70.7-57.3-128-128-128zm0 176c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48z' fill='%2300f2fe'/><circle cx='256' cy='224' r='24' fill='%23ffffff'/></svg>">
+
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body style="overflow-y:auto; padding:1.25rem;">
+
+  <!-- Header Bar for Admin -->
+  <header class="navbar" style="border-radius:14px; margin-bottom:1.5rem;">
+    <div class="brand">
+      <div class="brand-icon">⚙️</div>
+      <div>
+        <span class="brand-title">RACE CONTROL ADMIN</span>
+        <span class="mode-badge">PANITIA PORTAL</span>
+      </div>
+    </div>
+
+    <div style="display:flex; gap:0.5rem;">
+      <a href="/" class="tab-btn" style="text-decoration:none;">
+        <span>🗺️</span>
+        <span>Public Map</span>
+      </a>
+      <a href="/tracker" class="tab-btn" style="text-decoration:none;">
+        <span>📱</span>
+        <span>Tracker App</span>
+      </a>
+    </div>
+  </header>
+
+  <div class="admin-dashboard">
+    
+    <!-- GRID LAYOUT FOR ADMIN -->
+    <div class="admin-grid">
+      
+      <!-- CARD 1: BUAT AKUN PESERTA (RIDER ACCOUNT CREATOR) -->
+      <div class="admin-card">
+        <h3 class="admin-card-title">👤 Buat Akun Peserta Baru</h3>
+        <p style="font-size:0.75rem; color:var(--text-muted);">
+          Buatkan Nomor BIB & PIN untuk peserta agar mereka bisa login di aplikasi <code>/tracker</code> pada HP mereka.
+        </p>
+
+        <form id="create-rider-form" style="display:flex; flex-direction:column; gap:0.6rem;">
+          <div style="display:grid; grid-template-columns: 1fr 1fr; gap:0.5rem;">
+            <div class="form-group">
+              <label>Nomor BIB</label>
+              <input type="text" id="admin-bib" class="form-control" placeholder="Misal: 101" required>
+            </div>
+            <div class="form-group">
+              <label>PIN Login (4 Digit)</label>
+              <input type="text" id="admin-pin" class="form-control" placeholder="Misal: 1234" required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Nama Peserta</label>
+            <input type="text" id="admin-name" class="form-control" placeholder="Nama Lengkap Rider" required>
+          </div>
+
+          <div class="form-group">
+            <label>Kategori</label>
+            <select id="admin-category" class="form-control">
+              <option value="Solo Unsupported">Solo Unsupported</option>
+              <option value="Pair Category">Pair Category</option>
+              <option value="Relay Team">Relay Team</option>
+            </select>
+          </div>
+
+          <button type="submit" class="btn-primary" style="margin-top:0.4rem;">
+            ➕ BUAT AKUN PESERTA
+          </button>
+        </form>
+      </div>
+
+      <!-- CARD 2: DRAFT RUTE & EVENT MODE -->
+      <div class="admin-card">
+        <h3 class="admin-card-title">🗺️ Rute Balap GPX & Event Mode</h3>
+        <p style="font-size:0.75rem; color:var(--text-muted);">
+          Atur mode pelacakan atau upload file jalur balapan `.gpx` resmi.
+        </p>
+
+        <div class="form-group">
+          <label>Mode Balapan</label>
+          <select id="admin-event-mode" class="form-control">
+            <option value="fixed">Fixed GPX Route Mode (Jalur Resmi)</option>
+            <option value="free">Free Tracking Mode (Tanpa Harus Ada Jalur)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Upload File GPX (.gpx)</label>
+          <input type="file" id="admin-gpx-input" class="form-control" accept=".gpx">
+        </div>
+      </div>
+
+      <!-- CARD 3: SIMULATOR & EMERGENCY -->
+      <div class="admin-card">
+        <h3 class="admin-card-title">🏎️ Live Simulator & Emergency Test</h3>
+        <p style="font-size:0.75rem; color:var(--text-muted);">
+          Uji simulasi 5 rider bergerak di peta publik atau bersihkan event.
+        </p>
+
+        <div style="display:flex; flex-direction:column; gap:0.5rem;">
+          <button id="btn-toggle-sim" class="btn-primary">▶ START SIMULATOR DEMO</button>
+          <button id="btn-clear-event" class="btn-secondary" style="color:#f43f5e; border-color:rgba(244,63,94,0.3);">
+            🗑️ RESET / HAPUS SELURUH PESERTA & DB
+          </button>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TABLE AKUN PESERTA TERDAFTAR -->
+    <div class="admin-card" style="margin-top:1rem;">
+      <h3 class="admin-card-title">📋 Daftar Akun Peserta Terdaftar</h3>
+      
+      <div style="overflow-x:auto;">
+        <table style="width:100%; border-collapse:collapse; font-size:0.75rem; text-align:left;">
+          <thead>
+            <tr style="border-bottom:1px solid var(--border-glass); color:var(--text-muted);">
+              <th style="padding:0.5rem;">BIB</th>
+              <th style="padding:0.5rem;">NAMA PESERTA</th>
+              <th style="padding:0.5rem;">KATEGORI</th>
+              <th style="padding:0.5rem;">PIN</th>
+              <th style="padding:0.5rem;">KM TEMP U H</th>
+              <th style="padding:0.5rem;">AKSI</th>
+            </tr>
+          </thead>
+          <tbody id="admin-riders-table-body">
+            <tr>
+              <td colspan="6" style="padding:1rem; text-align:center; color:var(--text-dim);">
+                Belum ada akun peserta terdaftar. Buat akun baru di atas!
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="toast-container" class="toast-container"></div>
+
+  <script type="module" src="./src/js/admin-app.js"></script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#070a12">
+  <meta name="description" content="Rider GPS Tracker PWA - Racemap Ultra">
+  
+  <title>Rider GPS Tracker - Racemap Ultra</title>
+
+  <link rel="manifest" href="./manifest.json">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect width='512' height='512' rx='100' fill='%230b0f19'/><path d='M256 96c-70.7 0-128 57.3-128 128 0 88 128 224 128 224s128-136 128-224c0-70.7-57.3-128-128-128zm0 176c-26.5 0-48-21.5-48-48s21.5-48 48-48 48 21.5 48 48-21.5 48-48 48z' fill='%2300f2fe'/><circle cx='256' cy='224' r='24' fill='%23ffffff'/></svg>">
+
+  <link rel="stylesheet" href="./src/styles/main.css">
+</head>
+<body style="justify-content:center; align-items:center; background: radial-gradient(circle at center, #0f172a 0%, #070a12 100%);">
+
+  <!-- RIDER LOGIN CARD (If Not Logged In) -->
+  <div id="login-card" class="pwa-phone-container" style="display:flex;">
+    <div class="pwa-header">
+      <div>
+        <h2 class="pwa-title">LOGIN RIDER TRACKER</h2>
+        <span style="font-size:0.65rem; color:var(--text-muted);">Masukkan BIB & PIN Akun dari Panitia</span>
+      </div>
+      <div class="brand-icon">📱</div>
+    </div>
+
+    <form id="rider-login-form" style="display:flex; flex-direction:column; gap:0.85rem;">
+      <div class="form-group">
+        <label>Nomor BIB Peserta</label>
+        <input type="text" id="login-bib" class="form-control" placeholder="Contoh: 101" required>
+      </div>
+
+      <div class="form-group">
+        <label>PIN / Passcode Peserta</label>
+        <input type="password" id="login-pin" class="form-control" placeholder="****" required>
+      </div>
+
+      <button type="submit" class="btn-primary" style="margin-top:0.5rem; padding:0.75rem;">
+        🔐 LOGIN SEBAGAI PESERTA
+      </button>
+    </form>
+
+    <div style="font-size:0.7rem; color:var(--text-dim); text-align:center; border-top:1px solid var(--border-glass); padding-top:0.6rem;">
+      Belum memiliki akun BIB & PIN? Hubungi Panitia Race Control.
+      <br>
+      <a href="/" style="color:var(--primary); text-decoration:none; font-weight:700;">⬅️ Kembali ke Public Live Map</a>
+    </div>
+  </div>
+
+  <!-- RIDER TRACKER DASHBOARD (Shown After Login) -->
+  <div id="tracker-dashboard" class="pwa-phone-container" style="display:none;">
+    
+    <div class="pwa-header">
+      <div>
+        <h2 class="pwa-title" id="display-rider-name">RIDER DASHBOARD</h2>
+        <span style="font-size:0.65rem; color:var(--text-muted);" id="display-rider-bib">BIB #---</span>
+      </div>
+      <div id="pwa-status-badge" class="pwa-status-badge off">
+        <span class="pulse-dot"></span> OFF / PAUSED
+      </div>
+    </div>
+
+    <!-- PWA Install Prompt -->
+    <div class="install-pwa-card" id="pwa-install-card" style="display:none;">
+      <div class="install-text">📲 Install Aplikasi ke Home Screen HP Anda</div>
+      <button class="btn-install" id="btn-pwa-install">INSTALL</button>
+    </div>
+
+    <!-- Main Action Button -->
+    <div class="tracker-action-area">
+      <button id="btn-toggle-tracker" class="btn-start-tracking">
+        <span>START</span>
+        <small>TRACKING</small>
+      </button>
+      <span id="pwa-gps-status" style="font-size:0.7rem; color:var(--text-muted); text-align:center;">Status: Ready. Tekan START untuk kirim GPS HP ke Peta Publik.</span>
+    </div>
+
+    <!-- Telemetry Gauges -->
+    <div class="telemetry-grid">
+      <div class="tele-card main-speed">
+        <span class="tele-label">Kecepatan Saat Ini</span>
+        <span class="tele-value" id="tele-speed-val">0.0 km/h</span>
+      </div>
+
+      <div class="tele-card">
+        <span class="tele-label">Jarak Tempuh</span>
+        <span class="tele-value" id="tele-dist-val">0.00 KM</span>
+      </div>
+
+      <div class="tele-card">
+        <span class="tele-label">Elevasi</span>
+        <span class="tele-value" id="tele-ele-val">15 m</span>
+      </div>
+
+      <div class="tele-card">
+        <span class="tele-label">Baterai HP</span>
+        <span class="tele-value" id="tele-bat-val">100%</span>
+      </div>
+
+      <div class="tele-card">
+        <span class="tele-label">Offline Buffer</span>
+        <span class="tele-value" id="tele-queue-val" style="color:var(--secondary);">0 queued</span>
+      </div>
+    </div>
+
+    <!-- Device Indicators -->
+    <div class="device-indicators">
+      <div class="indicator-item">
+        <span>💡 WakeLock:</span> <b style="color:var(--status-moving);">ACTIVE</b>
+      </div>
+      <div class="indicator-item">
+        <span>📍 GPS:</span> <b>High (&lt; 5m)</b>
+      </div>
+    </div>
+
+    <!-- Emergency SOS Section -->
+    <div class="sos-container">
+      <button id="btn-pwa-sos" class="btn-sos">
+        <span>🚨 EMERGENSI SOS (KIRIM LOKASI DARURAT)</span>
+      </button>
+    </div>
+
+    <button id="btn-logout-rider" class="btn-secondary" style="margin-top:0.4rem; font-size:0.7rem;">
+      🚪 Logout / Ganti Akun Rider
+    </button>
+
+  </div>
+
+  <script type="module" src="./src/js/tracker-app.js"></script>
+</body>
+</html>
